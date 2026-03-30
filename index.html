@@ -22,6 +22,7 @@ canvas{
   background:linear-gradient(#fffef8,#fff4d6);
   border:3px solid #666;
   border-radius:16px;
+  touch-action:none;
 }
 </style>
 </head>
@@ -50,8 +51,25 @@ let score = 0;
 let next = rand();
 let gameOver = false;
 let dropCooldown = 0;
+let pointerX = W/2;
 
-// ★ サイズを値に応じて変える
+// ===== 色テーブル =====
+function getColor(v){
+  const colors = {
+    1:"#ffd54f",
+    2:"#ffb74d",
+    3:"#ff8a65",
+    4:"#81c784",
+    5:"#4db6ac",
+    6:"#64b5f6",
+    7:"#9575cd",
+    8:"#f06292",
+    9:"#90a4ae"
+  };
+  return colors[v] || "#ccc";
+}
+
+// サイズ
 function getRadius(value){
   return 16 + value * 4;
 }
@@ -86,21 +104,34 @@ function addBall(x){
   dropCooldown = 20;
 }
 
+// マウス位置追跡
+canvas.addEventListener("mousemove", (e)=>{
+  const rect = canvas.getBoundingClientRect();
+  pointerX = (e.clientX - rect.left) * (W / rect.width);
+});
+
+// クリック
 canvas.addEventListener("click", (e)=>{
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (W / rect.width);
   addBall(x);
 });
 
+// タッチ
+canvas.addEventListener("touchstart", (e)=>{
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches[0].clientX - rect.left) * (W / rect.width);
+  addBall(x);
+},{passive:false});
+
 function update(){
 
-  // 重力
   for(const b of balls){
     b.vy += 0.3;
     b.x += b.vx;
     b.y += b.vy;
 
-    // 壁
     if(b.x - b.r < 0){
       b.x = b.r;
       b.vx *= -0.5;
@@ -110,7 +141,6 @@ function update(){
       b.vx *= -0.5;
     }
 
-    // 床
     if(b.y + b.r > H){
       b.y = H - b.r;
       b.vy *= -0.2;
@@ -118,7 +148,7 @@ function update(){
     }
   }
 
-  // 衝突処理（積み上がり対応）
+  // 衝突
   for(let i=0;i<balls.length;i++){
     for(let j=i+1;j<balls.length;j++){
       const a = balls[i];
@@ -131,9 +161,8 @@ function update(){
 
       if(dist < minDist){
 
-        // ★ めり込み防止
-        const nx = dist === 0 ? 1 : dx / dist;
-        const ny = dist === 0 ? 0 : dy / dist;
+        const nx = dx / dist || 1;
+        const ny = dy / dist || 0;
         const overlap = minDist - dist;
 
         a.x -= nx * overlap * 0.5;
@@ -143,14 +172,12 @@ function update(){
 
         const sum = a.value + b.value;
 
-        // ★ 10以上は合体しない（積む）
         if(sum > 10){
           a.vy *= -0.3;
           b.vy *= -0.3;
           continue;
         }
 
-        // 合体
         if(Math.abs(a.vy - b.vy) < 3){
 
           balls.splice(j,1);
@@ -179,10 +206,9 @@ function update(){
     }
   }
 
-  // ゲームオーバー
   if(dropCooldown > 0){
     dropCooldown--;
-  }else if(balls.length > 0){
+  }else{
     for(const b of balls){
       if(Math.abs(b.vy) < 0.5 && b.y - b.r < LINE){
         gameOver = true;
@@ -194,7 +220,7 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,W,H);
 
-  // ライン
+  // ===== ライン =====
   ctx.strokeStyle="red";
   ctx.setLineDash([8,6]);
   ctx.beginPath();
@@ -203,25 +229,43 @@ function draw(){
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // ボール
+  // ===== 次のボール表示 =====
+  const r = getRadius(next);
+
+  ctx.beginPath();
+  ctx.arc(pointerX, 50, r, 0, Math.PI*2);
+  ctx.fillStyle = getColor(next);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle="#000";
+  ctx.font=(r*0.9)+"px sans-serif";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText(next, pointerX, 50);
+
+  // ガイド線
+  ctx.strokeStyle="rgba(0,0,0,0.2)";
+  ctx.beginPath();
+  ctx.moveTo(pointerX,0);
+  ctx.lineTo(pointerX,100);
+  ctx.stroke();
+
+  // ===== ボール =====
   for(const b of balls){
     ctx.beginPath();
     ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
-    ctx.fillStyle="#ffb74d";
+    ctx.fillStyle=getColor(b.value);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle="#000";
+    ctx.font=(b.r*0.9)+"px sans-serif";
     ctx.textAlign="center";
     ctx.textBaseline="middle";
-
-    // ★ サイズに応じて文字サイズも調整
-    ctx.font = (b.r * 0.9) + "px sans-serif";
-
     ctx.fillText(b.value,b.x,b.y);
   }
 
-  // UI
   document.getElementById("score").textContent = score;
   document.getElementById("next").textContent = next;
 
