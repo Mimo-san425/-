@@ -9,30 +9,32 @@
 body {
     font-family: 'Comic Sans MS', cursive, sans-serif;
     text-align: center;
-    padding: 20px;
+    padding: 10px;
     background-color: #ffecb3;
 }
 
 .board {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     justify-content: center;
-    margin: 20px 0;
+    margin: 20px auto;
     padding: 10px;
     background-color: #ffccff;
     border-radius: 20px;
 }
 
+/* ⭐サイズ可変に変更 */
 .cell {
-    width: 100px;
-    height: 100px;
+    width: var(--cell-size);
+    height: var(--cell-size);
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 30px;
+    font-size: calc(var(--cell-size) / 3);
     cursor: pointer;
     border-radius: 10px;
     border: 2px solid #333;
+    transition: 0.2s;
 }
 
 .cell.selected {
@@ -45,16 +47,16 @@ body {
 }
 
 .message {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: bold;
     color: #ff4081;
-    white-space: pre-line; /* ⭐改行対応 */
+    white-space: pre-line;
 }
 
 button {
     padding: 10px 20px;
     font-size: 18px;
-    margin: 10px;
+    margin: 5px;
 }
 </style>
 </head>
@@ -83,11 +85,10 @@ let selectedCells = [];
 let time = 0;
 let timer;
 
-// 数字ペア
+// 数字生成
 function generate() {
     const pairs = [[1,9],[2,8],[3,7],[4,6],[5,5]];
     let nums = [];
-
     let count = (boardSize * boardSize) / 2;
 
     for (let i = 0; i < count; i++) {
@@ -108,7 +109,12 @@ function color(n) {
 function create() {
     const board = document.getElementById("board");
     board.innerHTML = "";
-    board.style.gridTemplateColumns = `repeat(${boardSize}, 100px)`;
+
+    // ⭐画面に合わせてサイズ調整（ここがポイント）
+    let cellSize = Math.min(90, window.innerWidth / (boardSize + 1));
+    board.style.setProperty('--cell-size', cellSize + "px");
+
+    board.style.gridTemplateColumns = `repeat(${boardSize}, var(--cell-size))`;
 
     let nums = generate();
 
@@ -129,7 +135,7 @@ function create() {
     document.getElementById("message").textContent = "";
 }
 
-// クリック
+// クリック処理
 function clickCell(n, cell) {
     if (cell.classList.contains("hidden")) return;
 
@@ -146,20 +152,15 @@ function clickCell(n, cell) {
 
         if (sum === 10) {
             selectedCells.forEach(c => c.classList.add("hidden"));
-
-            // ⭐成功演出
             document.getElementById("message").textContent = "いいね！";
 
-            // 全消しチェック
             if (document.querySelectorAll(".hidden").length === boardSize * boardSize) {
                 clearInterval(timer);
-
                 document.getElementById("message").textContent =
                     "おめでとう！\nすべての数字を消しました！";
             }
 
         } else {
-            // ⭐ミス演出
             document.getElementById("message").textContent = "おしい！";
             reset();
         }
@@ -171,7 +172,6 @@ function reset() {
     selected = [];
     selectedCells = [];
     document.getElementById("selected").textContent = "なし";
-
     document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected"));
 }
 
@@ -185,14 +185,14 @@ function startTimer() {
     }, 1000);
 }
 
-// 開始
+// ゲーム開始
 function startGame(size) {
     boardSize = size;
     create();
     startTimer();
 }
 
-// リスタート
+// 再スタート
 function startNewGame() {
     create();
     startTimer();
