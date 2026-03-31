@@ -3,290 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>足し算スイカゲーム</title>
+<title>10を作るパズルゲーム</title>
 
 <style>
-body{
-  margin:0;
-  font-family:sans-serif;
-  background:#f7f7f7;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:16px;
+body {
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    text-align: center;
+    padding: 20px;
+    background-color: #ffecb3;
 }
 
-h1{ margin:0 0 10px; }
+.board {
+    display: grid;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+    padding: 10px;
+    background-color: #ffccff;
+    border-radius: 20px;
+}
 
-canvas{
-  background:linear-gradient(#fffef8,#fff4d6);
-  border:3px solid #666;
-  border-radius:16px;
-  touch-action:none;
+.cell {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 2px solid #333;
+}
+
+.cell.selected {
+    background-color: #ffeb3b;
+    transform: scale(1.1);
+}
+
+.cell.hidden {
+    visibility: hidden;
+}
+
+.message {
+    font-size: 30px;
+    font-weight: bold;
+    color: #ff4081;
+    white-space: pre-line; /* ⭐改行対応 */
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 18px;
+    margin: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>足し算スイカゲーム</h1>
+<h1>10を作るパズルゲーム</h1>
 
-<div>スコア: <span id="score">0</span></div>
-<div>次: <span id="next">1</span></div>
-<button onclick="reset()">もう一回</button>
+<button onclick="startGame(2)">簡単</button>
+<button onclick="startGame(4)">ふつう</button>
+<button onclick="startGame(8)">むずかしい</button>
 
-<canvas id="game" width="400" height="600"></canvas>
+<div id="board" class="board"></div>
+
+<p>選んだ数字: <span id="selected">なし</span></p>
+<p>タイム: <span id="timer">0</span>秒</p>
+
+<div id="message" class="message"></div>
+
+<button onclick="startNewGame()">もう一回</button>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+let boardSize = 4;
+let selected = [];
+let selectedCells = [];
+let time = 0;
+let timer;
 
-const W = canvas.width;
-const H = canvas.height;
+// 数字ペア
+function generate() {
+    const pairs = [[1,9],[2,8],[3,7],[4,6],[5,5]];
+    let nums = [];
 
-const LINE = 120;
+    let count = (boardSize * boardSize) / 2;
 
-let balls = [];
-let score = 0;
-let next = rand();
-let gameOver = false;
-let dropCooldown = 0;
-let pointerX = W/2;
+    for (let i = 0; i < count; i++) {
+        let p = pairs[i % pairs.length];
+        nums.push(p[0], p[1]);
+    }
 
-// ===== 色テーブル =====
-function getColor(v){
-  const colors = {
-    1:"#ffd54f",
-    2:"#ffb74d",
-    3:"#ff8a65",
-    4:"#81c784",
-    5:"#4db6ac",
-    6:"#64b5f6",
-    7:"#9575cd",
-    8:"#f06292",
-    9:"#90a4ae"
-  };
-  return colors[v] || "#ccc";
+    return nums.sort(() => Math.random() - 0.5);
 }
 
-// サイズ
-function getRadius(value){
-  return 16 + value * 4;
+// 色
+function color(n) {
+    const colors = ["","#ff6666","#ffcc66","#66ff66","#66ccff","#ff66cc","#cc66ff","#ff9966","#66ffcc","#ffccff"];
+    return colors[n];
 }
 
-function rand(){
-  return 1 + Math.floor(Math.random()*4);
+// ボード生成
+function create() {
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+    board.style.gridTemplateColumns = `repeat(${boardSize}, 100px)`;
+
+    let nums = generate();
+
+    nums.forEach(n => {
+        let cell = document.createElement("div");
+        cell.className = "cell";
+        cell.textContent = n;
+        cell.style.background = color(n);
+
+        cell.onclick = () => clickCell(n, cell);
+
+        board.appendChild(cell);
+    });
+
+    selected = [];
+    selectedCells = [];
+    document.getElementById("selected").textContent = "なし";
+    document.getElementById("message").textContent = "";
 }
-
-function reset(){
-  balls = [];
-  score = 0;
-  next = rand();
-  gameOver = false;
-  dropCooldown = 0;
-}
-
-function addBall(x){
-  if(gameOver) return;
-
-  const r = getRadius(next);
-
-  balls.push({
-    x: Math.max(r, Math.min(W - r, x)),
-    y: 50,
-    vx: 0,
-    vy: 0,
-    value: next,
-    r: r
-  });
-
-  next = rand();
-  dropCooldown = 20;
-}
-
-// マウス位置追跡
-canvas.addEventListener("mousemove", (e)=>{
-  const rect = canvas.getBoundingClientRect();
-  pointerX = (e.clientX - rect.left) * (W / rect.width);
-});
 
 // クリック
-canvas.addEventListener("click", (e)=>{
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.clientX - rect.left) * (W / rect.width);
-  addBall(x);
-});
+function clickCell(n, cell) {
+    if (cell.classList.contains("hidden")) return;
 
-// タッチ
-canvas.addEventListener("touchstart", (e)=>{
-  e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.touches[0].clientX - rect.left) * (W / rect.width);
-  addBall(x);
-},{passive:false});
+    if (selected.length === 2) reset();
 
-function update(){
+    selected.push(n);
+    selectedCells.push(cell);
 
-  for(const b of balls){
-    b.vy += 0.3;
-    b.x += b.vx;
-    b.y += b.vy;
+    cell.classList.add("selected");
+    document.getElementById("selected").textContent = selected.join(" + ");
 
-    if(b.x - b.r < 0){
-      b.x = b.r;
-      b.vx *= -0.5;
-    }
-    if(b.x + b.r > W){
-      b.x = W - b.r;
-      b.vx *= -0.5;
-    }
+    if (selected.length === 2) {
+        let sum = selected[0] + selected[1];
 
-    if(b.y + b.r > H){
-      b.y = H - b.r;
-      b.vy *= -0.2;
-      if(Math.abs(b.vy) < 0.5) b.vy = 0;
-    }
-  }
+        if (sum === 10) {
+            selectedCells.forEach(c => c.classList.add("hidden"));
 
-  // 衝突
-  for(let i=0;i<balls.length;i++){
-    for(let j=i+1;j<balls.length;j++){
-      const a = balls[i];
-      const b = balls[j];
+            // ⭐成功演出
+            document.getElementById("message").textContent = "いいね！";
 
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.hypot(dx, dy);
-      const minDist = a.r + b.r;
+            // 全消しチェック
+            if (document.querySelectorAll(".hidden").length === boardSize * boardSize) {
+                clearInterval(timer);
 
-      if(dist < minDist){
+                document.getElementById("message").textContent =
+                    "おめでとう！\nすべての数字を消しました！";
+            }
 
-        const nx = dx / dist || 1;
-        const ny = dy / dist || 0;
-        const overlap = minDist - dist;
-
-        a.x -= nx * overlap * 0.5;
-        a.y -= ny * overlap * 0.5;
-        b.x += nx * overlap * 0.5;
-        b.y += ny * overlap * 0.5;
-
-        const sum = a.value + b.value;
-
-        if(sum > 10){
-          a.vy *= -0.3;
-          b.vy *= -0.3;
-          continue;
+        } else {
+            // ⭐ミス演出
+            document.getElementById("message").textContent = "おしい！";
+            reset();
         }
-
-        if(Math.abs(a.vy - b.vy) < 3){
-
-          balls.splice(j,1);
-          balls.splice(i,1);
-
-          if(sum === 10){
-            score += 10;
-          }else{
-            const r = getRadius(sum);
-
-            balls.push({
-              x:(a.x+b.x)/2,
-              y:(a.y+b.y)/2,
-              vx:0,
-              vy:0,
-              value:sum,
-              r:r
-            });
-
-            score += sum;
-          }
-
-          return;
-        }
-      }
     }
-  }
-
-  if(dropCooldown > 0){
-    dropCooldown--;
-  }else{
-    for(const b of balls){
-      if(Math.abs(b.vy) < 0.5 && b.y - b.r < LINE){
-        gameOver = true;
-      }
-    }
-  }
 }
 
-function draw(){
-  ctx.clearRect(0,0,W,H);
+// リセット
+function reset() {
+    selected = [];
+    selectedCells = [];
+    document.getElementById("selected").textContent = "なし";
 
-  // ===== ライン =====
-  ctx.strokeStyle="red";
-  ctx.setLineDash([8,6]);
-  ctx.beginPath();
-  ctx.moveTo(0,LINE);
-  ctx.lineTo(W,LINE);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // ===== 次のボール表示 =====
-  const r = getRadius(next);
-
-  ctx.beginPath();
-  ctx.arc(pointerX, 50, r, 0, Math.PI*2);
-  ctx.fillStyle = getColor(next);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle="#000";
-  ctx.font=(r*0.9)+"px sans-serif";
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.fillText(next, pointerX, 50);
-
-  // ガイド線
-  ctx.strokeStyle="rgba(0,0,0,0.2)";
-  ctx.beginPath();
-  ctx.moveTo(pointerX,0);
-  ctx.lineTo(pointerX,100);
-  ctx.stroke();
-
-  // ===== ボール =====
-  for(const b of balls){
-    ctx.beginPath();
-    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
-    ctx.fillStyle=getColor(b.value);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle="#000";
-    ctx.font=(b.r*0.9)+"px sans-serif";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-    ctx.fillText(b.value,b.x,b.y);
-  }
-
-  document.getElementById("score").textContent = score;
-  document.getElementById("next").textContent = next;
-
-  if(gameOver){
-    ctx.fillStyle="rgba(0,0,0,0.5)";
-    ctx.fillRect(0,0,W,H);
-    ctx.fillStyle="#fff";
-    ctx.font="40px sans-serif";
-    ctx.textAlign="center";
-    ctx.fillText("GAME OVER",W/2,H/2);
-  }
+    document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected"));
 }
 
-function loop(){
-  if(!gameOver) update();
-  draw();
-  requestAnimationFrame(loop);
+// タイマー
+function startTimer() {
+    clearInterval(timer);
+    time = 0;
+    timer = setInterval(() => {
+        time++;
+        document.getElementById("timer").textContent = time;
+    }, 1000);
 }
 
-reset();
-loop();
+// 開始
+function startGame(size) {
+    boardSize = size;
+    create();
+    startTimer();
+}
+
+// リスタート
+function startNewGame() {
+    create();
+    startTimer();
+}
 </script>
 
 </body>
