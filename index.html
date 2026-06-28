@@ -1,202 +1,388 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>10を作るパズルゲーム</title>
+  <meta charset="UTF-8">
+  <title>どうし かるた</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-body {
-    font-family: 'Comic Sans MS', cursive, sans-serif;
-    text-align: center;
-    padding: 10px;
-    background-color: #ffffe0;
-}
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #d8b26e;
+      text-align: center;
+    }
 
-.board {
-    display: grid;
-    gap: 8px;
-    justify-content: center;
-    margin: 20px auto;
-    padding: 10px;
-    background-color: #ffffff;
-    border-radius: 20px;
-}
+    header {
+      background: #7a4a20;
+      color: white;
+      padding: 10px;
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-/* ⭐サイズ可変に変更 */
-.cell {
-    width: var(--cell-size);
-    height: var(--cell-size);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: calc(var(--cell-size) / 3);
-    cursor: pointer;
-    border-radius: 10px;
-    border: 2px solid #333;
-    transition: 0.2s;
-}
+    .question-area {
+      background: #fff8dc;
+      margin: 8px auto;
+      padding: 8px;
+      width: 94%;
+      max-width: 700px;
+      border-radius: 15px;
+    }
 
-.cell.selected {
-    background-color: #ffeb3b;
-    transform: scale(1.1);
-}
+    .question-label {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
 
-.cell.hidden {
-    visibility: hidden;
-}
+    .question-word {
+      font-size: 42px;
+      font-weight: bold;
+      color: #d35400;
+      margin: 4px;
+    }
 
-.message {
-    font-size: 28px;
-    font-weight: bold;
-    color: #ff4081;
-    white-space: pre-line;
-}
+    button {
+      font-size: 18px;
+      margin: 4px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 12px;
+      background: #3498db;
+      color: white;
+      cursor: pointer;
+    }
 
-button {
-    padding: 10px 20px;
-    font-size: 18px;
-    margin: 5px;
-}
-</style>
+    button:hover {
+      background: #217dbb;
+    }
+
+    .message {
+      font-size: 26px;
+      font-weight: bold;
+      color: #c0392b;
+      min-height: 32px;
+      margin: 4px;
+    }
+
+    .score {
+      font-size: 18px;
+      margin: 4px;
+    }
+
+    .karuta-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 12px;
+      padding: 12px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border: 4px solid #333;
+      border-radius: 16px;
+      min-height: 165px;
+      padding: 5px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 3px 4px 8px rgba(0,0,0,0.28);
+      user-select: none;
+    }
+
+    .card:hover {
+      background: #fff4c2;
+      transform: scale(1.03);
+    }
+
+    .card img {
+      width: 145px;
+      height: 145px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .correct {
+      background: #b8f5b8 !important;
+      border-color: #27ae60;
+    }
+
+    .wrong {
+      background: #ffb3b3 !important;
+      border-color: #e74c3c;
+    }
+
+    .hidden {
+      visibility: hidden;
+    }
+
+    .no-image {
+      font-size: 13px;
+      color: #999;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    /* タブレット・スマホ用 */
+    @media (max-width: 700px) {
+      .karuta-board {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 8px;
+      }
+
+      .card {
+        min-height: 125px;
+        border-radius: 14px;
+        padding: 3px;
+      }
+
+      .card img {
+        width: 110px;
+        height: 110px;
+      }
+
+      .question-word {
+        font-size: 36px;
+      }
+
+      button {
+        font-size: 16px;
+        padding: 7px 14px;
+      }
+    }
+
+    /* とても小さい画面用 */
+    @media (max-width: 420px) {
+      .karuta-board {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 6px;
+      }
+
+      .card {
+        min-height: 105px;
+      }
+
+      .card img {
+        width: 95px;
+        height: 95px;
+      }
+
+      header {
+        font-size: 22px;
+      }
+
+      .question-word {
+        font-size: 32px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>10を作るパズルゲーム</h1>
+<header>どうし かるた</header>
 
-<button onclick="startGame(2)">簡単</button>
-<button onclick="startGame(4)">ふつう</button>
-<button onclick="startGame(8)">むずかしい</button>
+<div class="question-area">
+  <div class="question-label">よまれた ことばの えを タッチしよう</div>
+  <div id="question" class="question-word">スタート</div>
 
-<div id="board" class="board"></div>
+  <button onclick="startGame()">スタート</button>
+  <button onclick="resetGame()">リセット</button>
 
-<p>選んだ数字: <span id="selected">なし</span></p>
-<p>タイム: <span id="timer">0</span>秒</p>
+  <div class="message" id="message"></div>
+  <div class="score" id="score">0 / 12</div>
+</div>
 
-<div id="message" class="message"></div>
-
-<button onclick="startNewGame()">もう一回</button>
+<div id="board" class="karuta-board"></div>
 
 <script>
-let boardSize = 4;
-let selected = [];
-let selectedCells = [];
-let time = 0;
-let timer;
+const cards = [
+  { word: "あう", img: "images/au.png" },
+  { word: "あける", img: "images/akeru.png" },
+  { word: "あたたまる", img: "images/atatamaru.png" },
+  { word: "あるく", img: "images/aruku.png" },
+  { word: "いわう", img: "images/iwau.png" },
 
-// 数字生成
-function generate() {
-    const pairs = [[1,9],[2,8],[3,7],[4,6],[5,5]];
-    let nums = [];
-    let count = (boardSize * boardSize) / 2;
+  { word: "うたう", img: "images/utau.png" },
+  { word: "おこる", img: "images/okoru.png" },
+  { word: "およぐ", img: "images/oyogu.png" },
+  { word: "おす", img: "images/osu.png" },
+  { word: "かく", img: "images/kaku.png" },
 
-    for (let i = 0; i < count; i++) {
-        let p = pairs[i % pairs.length];
-        nums.push(p[0], p[1]);
-    }
+  { word: "きく", img: "images/kiku.png" },
+  { word: "きる", img: "images/kiru.png" },
+  { word: "けずる", img: "images/kezuru.png" },
+  { word: "ける", img: "images/keru.png" },
 
-    return nums.sort(() => Math.random() - 0.5);
+  { word: "こまる", img: "images/komaru.png" },
+  { word: "さがす", img: "images/sagasu.png" },
+  { word: "しく", img: "images/shiku.png" },
+  { word: "しめる", img: "images/shimeru.png" },
+  { word: "すべる", img: "images/suberu.png" },
+
+  { word: "すわる", img: "images/suwaru.png" },
+  { word: "たたむ", img: "images/tatamu.png" },
+  { word: "たつ", img: "images/tatsu.png" },
+  { word: "とぶ", img: "images/tobu.png" },
+  { word: "なく", img: "images/naku.png" },
+
+  { word: "なげる", img: "images/nageru.png" },
+  { word: "ぬぐ", img: "images/nugu.png" },
+  { word: "ねる", img: "images/neru.png" },
+  { word: "のむ", img: "images/nomu.png" },
+  { word: "のぼる", img: "images/noboru.png" },
+
+  { word: "はく", img: "images/haku.png" },
+  { word: "ひく", img: "images/hiku.png" },
+  { word: "かんがえる", img: "images/kangaeru.png" },
+  { word: "みる", img: "images/miru.png" },
+  { word: "めくる", img: "images/mekuru.png" },
+
+  { word: "わかる", img: "images/wakaru.png" },
+  { word: "わる", img: "images/waru.png" },
+  { word: "わらう", img: "images/warau.png" },
+  { word: "あらう", img: "images/arau.png" },
+  { word: "はしる", img: "images/hashiru.png" }
+];
+
+const DISPLAY_COUNT = 12;
+
+let gameCards = [];
+let remaining = [];
+let current = "";
+let scoreCount = 0;
+let gameStarted = false;
+
+function shuffle(array) {
+  const copied = [...array];
+  for (let i = copied.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = copied[i];
+    copied[i] = copied[j];
+    copied[j] = temp;
+  }
+  return copied;
 }
 
-// 色
-function color(n) {
-    const colors = ["","#ff6666","#ffcc66","#66ff66","#66ccff","#ff66cc","#cc66ff","#ff9966","#66ffcc","#ffccff"];
-    return colors[n];
+function makeRandomCards() {
+  gameCards = shuffle(cards).slice(0, DISPLAY_COUNT);
 }
 
-// ボード生成
-function create() {
-    const board = document.getElementById("board");
-    board.innerHTML = "";
+function makeBoard() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
 
-    // ⭐画面に合わせてサイズ調整（ここがポイント）
-    let cellSize = Math.min(90, window.innerWidth / (boardSize + 1));
-    board.style.setProperty('--cell-size', cellSize + "px");
+  gameCards.forEach(card => {
+    const div = document.createElement("div");
+    div.className = "card";
 
-    board.style.gridTemplateColumns = `repeat(${boardSize}, var(--cell-size))`;
+    const img = document.createElement("img");
+    img.src = card.img;
+    img.alt = card.word;
 
-    let nums = generate();
+    img.onerror = function() {
+      div.innerHTML = `
+        <div class="no-image">
+          画像なし<br>
+          ${card.img}
+        </div>
+      `;
+    };
 
-    nums.forEach(n => {
-        let cell = document.createElement("div");
-        cell.className = "cell";
-        cell.textContent = n;
-        cell.style.background = color(n);
+    div.appendChild(img);
 
-        cell.onclick = () => clickCell(n, cell);
+    div.onclick = function() {
+      checkAnswer(div, card.word);
+    };
 
-        board.appendChild(cell);
-    });
-
-    selected = [];
-    selectedCells = [];
-    document.getElementById("selected").textContent = "なし";
-    document.getElementById("message").textContent = "";
+    board.appendChild(div);
+  });
 }
 
-// クリック処理
-function clickCell(n, cell) {
-    if (cell.classList.contains("hidden")) return;
+function startGame() {
+  remaining = shuffle(gameCards.map(card => card.word));
+  current = "";
+  scoreCount = 0;
+  gameStarted = true;
 
-    if (selected.length === 2) reset();
-
-    selected.push(n);
-    selectedCells.push(cell);
-
-    cell.classList.add("selected");
-    document.getElementById("selected").textContent = selected.join(" + ");
-
-    if (selected.length === 2) {
-        let sum = selected[0] + selected[1];
-
-        if (sum === 10) {
-            selectedCells.forEach(c => c.classList.add("hidden"));
-            document.getElementById("message").textContent = "いいね！";
-
-            if (document.querySelectorAll(".hidden").length === boardSize * boardSize) {
-                clearInterval(timer);
-                document.getElementById("message").textContent =
-                    "おめでとう！\nすべての数字を消しました！";
-            }
-
-        } else {
-            document.getElementById("message").textContent = "おしい！";
-            reset();
-        }
-    }
+  document.getElementById("message").textContent = "";
+  updateScore();
+  nextQuestion();
 }
 
-// リセット
-function reset() {
-    selected = [];
-    selectedCells = [];
-    document.getElementById("selected").textContent = "なし";
-    document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected"));
+function nextQuestion() {
+  if (remaining.length === 0) {
+    current = "";
+    document.getElementById("question").textContent = "おわり";
+    document.getElementById("message").textContent = "ぜんぶ とれました！";
+    return;
+  }
+
+  current = remaining[0];
+  document.getElementById("question").textContent = current;
+  document.getElementById("message").textContent = "";
 }
 
-// タイマー
-function startTimer() {
-    clearInterval(timer);
-    time = 0;
-    timer = setInterval(() => {
-        time++;
-        document.getElementById("timer").textContent = time;
-    }, 1000);
+function checkAnswer(cardElement, selectedWord) {
+  if (!gameStarted) {
+    document.getElementById("message").textContent = "スタートを おしてね";
+    return;
+  }
+
+  if (selectedWord === current) {
+    cardElement.classList.add("correct");
+    document.getElementById("message").textContent = "せいかい！";
+
+    setTimeout(function() {
+      cardElement.classList.add("hidden");
+    }, 300);
+
+    remaining.shift();
+    scoreCount++;
+    updateScore();
+
+    setTimeout(function() {
+      nextQuestion();
+    }, 600);
+
+  } else {
+    cardElement.classList.add("wrong");
+    document.getElementById("message").textContent = "もういちど";
+
+    setTimeout(function() {
+      cardElement.classList.remove("wrong");
+    }, 300);
+  }
 }
 
-// ゲーム開始
-function startGame(size) {
-    boardSize = size;
-    create();
-    startTimer();
+function updateScore() {
+  document.getElementById("score").textContent =
+    scoreCount + " / " + gameCards.length;
 }
 
-// 再スタート
-function startNewGame() {
-    create();
-    startTimer();
+function resetGame() {
+  gameStarted = false;
+  current = "";
+  scoreCount = 0;
+  remaining = [];
+
+  document.getElementById("question").textContent = "スタート";
+  document.getElementById("message").textContent = "";
+
+  makeRandomCards();
+  makeBoard();
+  updateScore();
 }
+
+/* ページを開いたときに、39この中から12こランダム表示 */
+makeRandomCards();
+makeBoard();
+updateScore();
 </script>
 
 </body>
